@@ -26,9 +26,9 @@ func main() {
 	if resp.StatusCode != http.StatusOK {
 		log.Fatalf("Unesexped response from Gitlab: %d %v", resp.StatusCode, resp.Response)
 	}
-	fmt.Println("Gitlab Users:")
+	fmt.Printf("Users (%d):\n", len(users))
 	for _, u := range users {
-		fmt.Printf("  - %s\n", u.Name)
+		fmt.Printf("    - %s\n", u.Name)
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -62,6 +62,7 @@ func main() {
 		},
 		State: gitlab.String("opened"),
 	}
+	var allIssues []*gitlab.Issue
 	for {
 		issues, resp, err := git.Issues.ListProjectIssues(projectID, opt)
 		if err != nil {
@@ -70,15 +71,17 @@ func main() {
 		if resp.StatusCode != http.StatusOK {
 			log.Fatalf("Unesexped response from Gitlab: %d %v", resp.StatusCode, resp.Response)
 		}
-		fmt.Println("Issues:")
-		for _, i := range issues {
-			fmt.Printf("  - %d %s\n", i.ID, i.Title)
-		}
+		allIssues = append(allIssues, issues...)
 
 		// Get next page or exit if this was the last
 		if resp.NextPage == 0 {
 			break
 		}
 		opt.Page = resp.NextPage
+	}
+
+	fmt.Printf("Issues (%d):\n", len(allIssues))
+	for _, i := range allIssues {
+		fmt.Printf("    - %d %s\n", i.IID, i.Title) // IID is the Project-specific ID
 	}
 }

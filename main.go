@@ -11,6 +11,16 @@ import (
 	"github.com/xanzy/go-gitlab"
 )
 
+// contains checks if a string is present in a slice
+func contains(haystack []string, needle string) bool {
+	for _, v := range haystack {
+		if v == needle {
+			return true
+		}
+	}
+	return false
+}
+
 // GetEnv variable or use the default value if it is not set (i.e. empty).
 func GetEnv(varName, defaultValue string) string {
 	val := strings.TrimSpace(os.Getenv(varName))
@@ -85,25 +95,71 @@ func main() {
 	}
 
 	// List All Users //////////////////////////////////////////////////////////
-	users, err := GetAllUsers(git)
-	if err != nil {
-		log.Printf("Users: %s\n", err)
-	} else {
-		fmt.Printf("Users (%d):\n", len(users))
-		for _, u := range users {
-			fmt.Printf("    - %s\n", u.Name)
-		}
-	}
+	// users, err := GetAllUsers(git)
+	// if err != nil {
+	// 	log.Printf("Users: %s\n", err)
+	// } else {
+	// 	fmt.Printf("Users (%d):\n", len(users))
+	// 	for _, u := range users {
+	// 		fmt.Printf("    - %s\n", u.Name)
+	// 	}
+	// }
 
 	// List all open issues in the project /////////////////////////////////////
 	issues, err := GetAllOpenIssues(git, projectID)
 	if err != nil {
-		log.Printf("Issues: %s\n", err)
+		log.Printf("# Issues: %s\n\n", err)
 	} else {
-		fmt.Printf("Issues (%d):\n", len(issues))
+		fmt.Printf("# Issues (%d open)\n\n", len(issues))
+		// for _, i := range issues {
+		// 	fmt.Printf("    - %d %s\n", i.IID, i.Title) // IID is the Project-specific ID
+		// 	fmt.Printf("        - %+v\n", i.Labels)
+		// }
+	}
+
+	labelOrder := []string{
+		"HELP!",
+		// "Open", // Not working -- this is a category that means it has no other labels.
+		"T::23-04",
+		"T::23-05",
+		"T::23-06",
+		"T::23-07",
+		"T::23-08",
+		"T::23-09",
+		"T::23-10",
+		"T::23-11",
+		"T::23-12",
+		"T::24-01",
+		"T::24-02",
+		"T::24-03",
+		"T::24-04",
+		"T::Future",
+	}
+	links := []string{}
+
+	for _, label := range labelOrder {
+		fmt.Printf("- %s\n", label)
 		for _, i := range issues {
-			fmt.Printf("    - %d %s\n", i.IID, i.Title) // IID is the Project-specific ID
-			fmt.Printf("        - %+v\n", i.Labels)
+			if contains(i.Labels, label) {
+				assignee := ""
+				if i.Assignee != nil {
+					parts := strings.Split(i.Assignee.Name, " ")
+					for _, p := range parts {
+						assignee = fmt.Sprintf("%s%s", assignee, string(p[0]))
+					}
+					assignee = fmt.Sprintf("**%s**", assignee)
+				} else {
+					assignee = " " // U+2003 EM SPACE
+				}
+				fmt.Printf("    - [%4d][%d] %s %s\n", i.IID, i.IID, assignee, i.Title)
+				// Use Markdown formatting to save the ID-to-URL for the bottom of the doc
+				links = append(links, fmt.Sprintf("[%d]: %s", i.IID, i.WebURL))
+			}
 		}
 	}
+	fmt.Printf("\n\n\n# Links\n\n")
+	for _, link := range links {
+		fmt.Println(link)
+	}
+
 }

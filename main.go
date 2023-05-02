@@ -138,7 +138,7 @@ func main() {
 	links := []string{}
 
 	for _, label := range labelOrder {
-		fmt.Printf("- %s\n", label)
+		fmt.Printf("## %s\n", label)
 		for _, i := range issues {
 			if contains(i.Labels, label) {
 				assignee := ""
@@ -147,11 +147,9 @@ func main() {
 					for _, p := range parts {
 						assignee = fmt.Sprintf("%s%s", assignee, string(p[0]))
 					}
-					assignee = fmt.Sprintf("**%s**", assignee)
-				} else {
-					assignee = " " // U+2003 EM SPACE
+					assignee = fmt.Sprintf(" — **%s**", assignee)
 				}
-				fmt.Printf("    - [%4d][%d] %s %s\n", i.IID, i.IID, assignee, i.Title)
+				fmt.Printf("- [%d][%d] %s%s\n", i.IID, i.IID, i.Title, assignee)
 				// Use Markdown formatting to save the ID-to-URL for the bottom of the doc
 				links = append(links, fmt.Sprintf("[%d]: %s", i.IID, i.WebURL))
 			}

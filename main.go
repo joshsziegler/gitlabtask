@@ -84,6 +84,7 @@ func GetAllOpenIssues(git *gitlab.Client, projectID int) (issues []*gitlab.Issue
 }
 
 func main() {
+	// Allow the project ID to be set via environment variable, but require a GITLAB_API_KEY
 	projectID := GetEnvInt("GITLAB_PROJ_ID", 111)
 	key := os.Getenv("GITLAB_API_KEY")
 	if key == "" {
@@ -108,19 +109,13 @@ func main() {
 	// List all open issues in the project /////////////////////////////////////
 	issues, err := GetAllOpenIssues(git, projectID)
 	if err != nil {
-		log.Printf("# Issues: %s\n\n", err)
-	} else {
-		fmt.Printf("# Issues (%d open)\n\n", len(issues))
-		// for _, i := range issues {
-		// 	fmt.Printf("    - %d %s\n", i.IID, i.Title) // IID is the Project-specific ID
-		// 	fmt.Printf("        - %+v\n", i.Labels)
-		// }
+		log.Fatalf("# Issues: %s\n\n", err)
 	}
 
 	labelOrder := []string{
 		"HELP!",
-		// "Open", // Not working -- this is a category that means it has no other labels.
-		"T::23-04",
+		"customer communication",
+		"New", // -- this is a category means it has no other labels in this list
 		"T::23-05",
 		"T::23-06",
 		"T::23-07",
@@ -133,31 +128,60 @@ func main() {
 		"T::24-02",
 		"T::24-03",
 		"T::24-04",
+		"T::24-05",
+		"T::24-06",
+		"T::24-07",
+		"T::24-08",
+		"T::24-09",
+		"T::24-10",
+		"T::24-11",
+		"T::24-12",
 		"T::Future",
+		"STIG:CAT-2",
+		"STIG:CAT-3",
 	}
 	links := []string{}
+	issueGroups := make(map[string][]*gitlab.Issue)
 
+	// For each label, iterate through each ticket and put unclaimed ones in the first label's bucket that they match
 	for _, label := range labelOrder {
-		fmt.Printf("## %s\n", label)
-		for _, i := range issues {
+		for j := len(issues) - 1; j >= 0; j-- {
+			i := issues[j]
 			if contains(i.Labels, label) {
-				assignee := ""
-				if i.Assignee != nil {
-					parts := strings.Split(i.Assignee.Name, " ")
-					for _, p := range parts {
-						assignee = fmt.Sprintf("%s%s", assignee, string(p[0]))
-					}
-					assignee = fmt.Sprintf(" — **%s**", assignee)
-				}
-				fmt.Printf("- [%d][%d] %s%s\n", i.IID, i.IID, i.Title, assignee)
-				// Use Markdown formatting to save the ID-to-URL for the bottom of the doc
-				links = append(links, fmt.Sprintf("[%d]: %s", i.IID, i.WebURL))
+				issueGroups[label] = append(issueGroups[label], i) // Add the issue to the right key
+				issues = append(issues[:j], issues[j+1:]...)       // Delete the issue from the list
 			}
 		}
 	}
+	// All tickets that are not in one of the labels should still be shown as "New" 
+	for _, i := range issues {
+		issueGroups["New"] = append(issueGroups["New"], i)
+	}
+	// Done sorting through issues. Print everything using Markdown
+	for _, label := range labelOrder {
+		fmt.Printf("## %s\n", label)
+		for _, i := range issueGroups[label] {
+			assignee := ""
+			if i.Assignee != nil {
+				parts := strings.Split(i.Assignee.Name, " ")
+				for _, p := range parts {
+					assignee = fmt.Sprintf("%s%s", assignee, string(p[0]))
+				}
+				assignee = fmt.Sprintf(" — **%s**", assignee)
+			}
+			// Add a bold BUG prefix if it's labeled as one
+			prefix := ""
+			if contains(i.Labels, "Type::Bug"){
+				prefix = "**BUG**"
+			}
+			fmt.Printf("- [%d][%d] %s %s%s\n", i.IID, i.IID, prefix, i.Title, assignee)
+			// Use Markdown formatting to save the ID-to-URL for the bottom of the doc
+			links = append(links, fmt.Sprintf("[%d]: %s", i.IID, i.WebURL))
+		}
+	}
+
 	fmt.Printf("\n\n\n# Links\n\n")
 	for _, link := range links {
 		fmt.Println(link)
 	}
-
 }

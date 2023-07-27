@@ -49,9 +49,9 @@ func GroupIssues(issues []*gitlab.Issue, labelOrder []string) (map[string][]*git
 			}
 		}
 	}
-	// All tickets that are not in one of the labels should still be shown as "New"
+	// All tickets that are not in one of the labels should still be shown as "New" unless it is in excluded label.
 	for _, i := range issues {
-		issueGroups["New"] = append(issueGroups["New"], i)
+		issueGroups["Unsorted"] = append(issueGroups["Unsorted"], i)
 	}
 	return issueGroups, nil
 }
@@ -66,7 +66,7 @@ func ListAllOpenIssues(git *gitlab.Client, projectID int) {
 	labelOrder := []string{
 		"HELP!",
 		"customer communication",
-		"New", // -- this is a category means it has no other labels in this list
+		"Unsorted", // -- this is a category means it has no other labels in this list
 		"T::23-05",
 		"T::23-06",
 		"T::23-07",

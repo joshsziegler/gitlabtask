@@ -1,0 +1,34 @@
+# zglr.org 
+
+# HTTPS
+server {
+  server_name zglr.org www.zglr.org;
+  location / {
+    auth_basic "Please Login";
+    auth_basic_user_file /etc/apache2/.htpasswd;
+    proxy_pass http://localhost:8080;
+    include proxy_params;
+  }
+  listen [::]:443 ssl ipv6only=on; # managed by Certbot
+  listen 443 ssl; # managed by Certbot
+  ssl_certificate /etc/letsencrypt/live/zglr.org/fullchain.pem; # managed by Certbot
+  ssl_certificate_key /etc/letsencrypt/live/zglr.org/privkey.pem; # managed by Certbot
+  include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+  ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+
+# HTTP
+server {
+  if ($host = www.zglr.org) {
+    return 301 https://$host$request_uri;
+  } # managed by Certbot
+  if ($host = zglr.org) {
+    return 301 https://$host$request_uri;
+  } # managed by Certbot
+
+  listen 80 default_server;
+  listen [::]:80 default_server;
+  server_name zglr.org www.zglr.org;
+  return 404; # managed by Certbot
+}

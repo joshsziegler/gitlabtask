@@ -1,0 +1,22 @@
+# gitlabtask shows a read-only view of the AG's Gitlab tickets
+[Unit]
+Description=gitlabtask
+After=syslog.target
+After=network.target
+After=mysql.service
+
+[Service]
+RestartSec=2s
+Type=simple
+User=josh
+Group=josh
+WorkingDirectory=/home/josh/code/gitlabtask/
+ExecStart=/home/josh/code/gitlabtask/gittask
+Restart=always
+Environment=GITLAB_API_KEY=REPLACE_ME
+# Track and show CPU and RAM usage
+CPUAccounting=yes
+MemoryAccounting=yes
+
+[Install]
+WantedBy=multi-user.target

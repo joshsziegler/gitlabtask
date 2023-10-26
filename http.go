@@ -121,9 +121,7 @@ func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
 		"HELP!",
 		"Customer Communication",
 		"Unsorted", // -- this is a category means it has no other labels in this list
-		"T::23-07",
-		"T::23-08",
-		"T::23-09",
+		// "Design",
 		"T::23-10",
 		"T::23-11",
 		"T::23-12",

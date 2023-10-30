@@ -67,6 +67,7 @@ func ListAllOpenIssues(git *gitlab.Client, projectID int) {
 		"HELP!",
 		"customer communication",
 		"Unsorted", // -- this is a category means it has no other labels in this list
+		"Design",
 		"T::23-05",
 		"T::23-06",
 		"T::23-07",

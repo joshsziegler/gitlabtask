@@ -56,7 +56,6 @@ func writeHeader(w http.ResponseWriter) {
 			h1,h2 {
 				font-size: 31.25px;
 				line-height: 48px;
-				border-bottom: 1px solid #8a8a8a;
 			}
 
 			p,ul,ol {
@@ -70,7 +69,7 @@ func writeHeader(w http.ResponseWriter) {
 			article {
 				max-width: 900px;
 				margin-right: auto;
-				margin-left: auto;
+				margin-left: 200px;
 				margin-bottom: 4rem;
 			}
 
@@ -79,8 +78,11 @@ func writeHeader(w http.ResponseWriter) {
 			.text-right { text-align: right; }
 			.text-color-slate { color: #757575; }
 			.pl-2 { padding-left: 0.5rem; }
-			.px-1 { padding-left: 1rem; padding-right: 1rem;}
-			.ta-end {text-align: end;}
+			.px-1 { padding-left: 1rem; padding-right: 1rem; }
+			.ta-end {text-align: end; }
+			.inline { display: inline; }
+			.inline-block {display: inline-block; }
+			.block {display: block; }
 
 			td.truncate { /* Truncate td to 700px using ellipsis */
 				display: block;
@@ -91,22 +93,55 @@ func writeHeader(w http.ResponseWriter) {
 			}
 
 			.bug { color: #c20000 !important; }
+			.underline {
+				border-bottom: 1px solid #8a8a8a;
+			}
+			.main-nav {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 200px;
+				height: 100%;
+
+				background-color: rgb(37,38,41);
+				color: rgb(255,255,255);
+			}
+			.main-nav > h1,
+			.main-nav > h2,
+			.main-nav > h3,
+			.main-nav > h4,
+			.main-nav > h5 {
+				color: rgb(215,215,215);
+			}
+			.main-nav > ul {
+				margin: 0.5rem;
+				padding: 0 0 0 0.25rem;
+			}
+			.main-nav > ul > li {
+				list-style: none;
+			}
+			.main-nav > ul > li > a {
+				color: rgba(191,191,191,90);
+			}
+			.main-nav > ul > li > a:hover {
+				color: rgba(191,191,191,100);
+			}
 		</style>
 	</head>
 	<body>
+		<nav class="main-nav">
+			<h2 class="">View</h2>
+			<ul>
+				<li class=""><a href="/list">List</a></li>
+				<li class=""><a href="/msu">Must/Should/Want</a></li>
+			</ul>
+		</nav>
 	`
 	fmt.Fprintln(w, header)
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	writeHeader(w)
-	fmt.Fprint(w, "<ul>")
-	fmt.Fprint(w, `<li><a href="/list">List</a></li>`)
-	fmt.Fprint(w, "</ul>")
-
-	fmt.Fprintln(w, "</article>")
-	fmt.Fprintln(w, "</body>")
-	fmt.Fprintln(w, "</html>")
+	http.Redirect(w, r, "/msw", http.StatusSeeOther)
 }
 
 func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +185,7 @@ func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
 	// Done sorting through issues. Print everything using Markdown
 	fmt.Fprintln(w, "<article>")
 	for _, label := range labelOrder {
-		fmt.Fprintf(w, "<h2>%s</h2>\n<ul>", label) // TODO(JZ): Add link to the list view, sorted by creation date (oldest to newest) with only this label https://gitlab.office.analyticsgateway.com/it/scale/analytics-hub/-/issues/?sort=created_asc&state=opened&label_name%5B%5D=customer%20communication&first_page_size=20
+		fmt.Fprintf(w, `<h2 class="underline">%s</h2><ul>`, label) // TODO(JZ): Add link to the list view, sorted by creation date (oldest to newest) with only this label https://gitlab.office.analyticsgateway.com/it/scale/analytics-hub/-/issues/?sort=created_asc&state=opened&label_name%5B%5D=customer%20communication&first_page_size=20
 		for _, i := range issueGroups[label] {
 			assignee := ""
 			if i.Assignee != nil {
@@ -209,7 +244,7 @@ func (s *Server) handleIssueByMustShouldWant(w http.ResponseWriter, r *http.Requ
 		}
 		// TODO(JZ): Add link to the list view, sorted by creation date (oldest to newest) with only this label
 		// https://gitlab.office.analyticsgateway.com/it/scale/analytics-hub/-/issues/?sort=created_asc&state=opened&label_name%5B%5D=customer%20communication&first_page_size=20
-		fmt.Fprintf(w, `<tr><td colspan="%d"><h2>%s</h2></td></tr>`, numCol, label)
+		fmt.Fprintf(w, `<tr><td colspan="%d"><h2 class="underline">%s</h2></td></tr>`, numCol, label)
 		if len(issueGroups[label]) < 1 {
 			fmt.Fprintf(w, `<tr><td colspan="%d">None Found</td></tr>`, numCol)
 		}

@@ -67,10 +67,10 @@ func writeHeader(w http.ResponseWriter) {
 			}
 
 			article {
-				max-width: 900px;
 				margin-right: auto;
 				margin-left: 200px;
 				margin-bottom: 4rem;
+				padding: 0 1rem;
 			}
 
 			.b { font-weight: bold; }
@@ -145,13 +145,6 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
-	writeHeader(w)
-	issues, err := GetAllOpenIssues(s.git, s.projectID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	labelOrder := []string{
 		"HELP!",
 		"Customer Communication",
@@ -175,6 +168,33 @@ func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
 		"T::Future",
 		"STIG:CAT-2",
 		"STIG:CAT-3",
+	}
+	s.printTemplateV2(w, labelOrder)
+}
+
+// Show all tickets sorted by deadlines then Must, Should, and Want.
+func (s *Server) handleIssueByMustShouldWant(w http.ResponseWriter, r *http.Request) {
+	labelOrder := []string{
+		"HELP!",
+		"M::Must",
+		"M::Should",
+		"M::Want",
+		"Unsorted", // -- this is a category means it has no other labels in this list
+		"STOPHERE", // Hack to stop the list at this point
+		"Customer Communication",
+		"STIG:CAT-2",
+		"STIG:CAT-3",
+	}
+	s.printTemplateV2(w, labelOrder)
+}
+
+func (s *Server) printTemplateV1(w http.ResponseWriter, labelOrder []string) {
+	writeHeader(w)
+
+	issues, err := GetAllOpenIssues(s.git, s.projectID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	issueGroups, err := GroupIssues(issues, labelOrder)
 	if err != nil {
@@ -208,25 +228,13 @@ func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "</body>\n</html>")
 }
 
-// Show all tickets sorted by deadlines then Must, Should, and Want.
-func (s *Server) handleIssueByMustShouldWant(w http.ResponseWriter, r *http.Request) {
+func (s *Server) printTemplateV2(w http.ResponseWriter, labelOrder []string) {
 	writeHeader(w)
+
 	issues, err := GetAllOpenIssues(s.git, s.projectID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	labelOrder := []string{
-		"HELP!",
-		"M::Must",
-		"M::Should",
-		"M::Want",
-		"Unsorted", // -- this is a category means it has no other labels in this list
-		"STOPHERE", // Hack to stop the list at this point
-		"Customer Communication",
-		"STIG:CAT-2",
-		"STIG:CAT-3",
 	}
 	issueGroups, err := GroupIssues(issues, labelOrder)
 	if err != nil {
@@ -281,6 +289,6 @@ func (s *Server) handleIssueByMustShouldWant(w http.ResponseWriter, r *http.Requ
 		}
 	}
 	fmt.Fprintln(w, "</table>")
-	fmt.Fprintln(w, "</table>")
+	fmt.Fprintln(w, "</article>")
 	fmt.Fprintln(w, "</body>\n</html>")
 }

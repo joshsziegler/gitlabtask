@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ func (s *Server) Listen() error {
 	http.HandleFunc("/", s.handleIndex)
 	http.HandleFunc("/list", s.handleIssueList)
 	http.HandleFunc("/msw", s.handleIssueByMustShouldWant)
+	http.HandleFunc("/issue/labels/update", s.UpdateIssueLabels)
 
 	return http.ListenAndServe(":8080", nil)
 }
@@ -144,6 +146,36 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/msw", http.StatusSeeOther)
 }
 
+func (s *Server) UpdateIssueLabels(w http.ResponseWriter, r *http.Request) {
+	issueIDStr := r.PostFormValue("issueID")
+	if issueIDStr == "" {
+		fmt.Fprintln(w, `<h2>Requires IssueID</h2>`)
+		return
+	}
+	issueID, err := strconv.Atoi(issueIDStr)
+	if err != nil {
+		fmt.Fprintf(w, `<h2>Invalid IssueID: %s</h2>`, issueIDStr)
+		return
+	}
+	var addLabel *string
+	addLabelStr := r.PostFormValue("addLabel")
+	if addLabelStr != "" {
+		addLabel = &addLabelStr
+	}
+
+	var delLabel *string
+	delLabelStr := r.PostFormValue("delLabel")
+	if delLabelStr != "" {
+		delLabel = &delLabelStr
+	}
+	_, err = UpdateIssueLabels(s.git, s.projectID, issueID, addLabel, delLabel)
+	if err != nil {
+		fmt.Fprintf(w, "<h2>Error updating issue's labels: %s</h2>", err.Error())
+		return
+	}
+	http.Redirect(w, r, "/msw", http.StatusSeeOther)
+}
+
 func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
 	labelOrder := []string{
 		"HELP!",
@@ -243,7 +275,7 @@ func (s *Server) printTemplateV2(w http.ResponseWriter, labelOrder []string) {
 	}
 
 	// Done sorting through issues. Print everything
-	numCol := 5
+	numCol := 6
 	fmt.Fprintln(w, "<article>")
 	fmt.Fprintln(w, "<table>")
 	for _, label := range labelOrder {
@@ -285,6 +317,13 @@ func (s *Server) printTemplateV2(w http.ResponseWriter, labelOrder []string) {
 
 			// Show the ticket's due date
 			fmt.Fprintf(w, `<td><span class="b pl-2">%s</span></td>`, i.DueDate)
+
+			// Show the ticket's current time label (e.g. T::23-11, T::24-01)
+			for _, label := range i.Labels {
+				if strings.HasPrefix(label, "T::") {
+					fmt.Fprintf(w, `<td>%s</td>`, label[3:])
+				}
+			}
 			fmt.Fprint(w, "</tr>")
 		}
 	}

@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"strings"
 
 	"github.com/xanzy/go-gitlab"
 )
@@ -56,73 +54,17 @@ func GroupIssues(issues []*gitlab.Issue, labelOrder []string) (map[string][]*git
 	return issueGroups, nil
 }
 
-// ListAllOpenIssues as Markdown from the specified project.
-func ListAllOpenIssues(git *gitlab.Client, projectID int) {
-	issues, err := GetAllOpenIssues(git, projectID)
-	if err != nil {
-		log.Fatalf("# Issues: %s\n\n", err)
+// UpdateIssueLables allows you to remove one label and/or add another to a ticket.
+func UpdateIssueLabels(git *gitlab.Client, projectID int, issueID int, addLabel *string, delLabel *string) (*gitlab.Issue, error) {
+	opt := &gitlab.UpdateIssueOptions{}
+	if addLabel != nil {
+		var labels gitlab.Labels = []string{*addLabel}
+		opt.AddLabels = &labels
 	}
-
-	labelOrder := []string{
-		"HELP!",
-		"customer communication",
-		"Unsorted", // -- this is a category means it has no other labels in this list
-		"Design",
-		"T::23-05",
-		"T::23-06",
-		"T::23-07",
-		"T::23-08",
-		"T::23-09",
-		"T::23-10",
-		"T::23-11",
-		"T::23-12",
-		"T::24-01",
-		"T::24-02",
-		"T::24-03",
-		"T::24-04",
-		"T::24-05",
-		"T::24-06",
-		"T::24-07",
-		"T::24-08",
-		"T::24-09",
-		"T::24-10",
-		"T::24-11",
-		"T::24-12",
-		"T::Future",
-		"STIG:CAT-2",
-		"STIG:CAT-3",
+	if delLabel != nil {
+		var labels gitlab.Labels = []string{*delLabel}
+		opt.RemoveLabels = &labels
 	}
-	links := []string{}
-	issueGroups, err := GroupIssues(issues, labelOrder)
-	if err != nil {
-		log.Fatalf("error grouping issues: %w", err)
-	}
-
-	// Done sorting through issues. Print everything using Markdown
-	for _, label := range labelOrder {
-		fmt.Printf("## %s\n", label)
-		for _, i := range issueGroups[label] {
-			assignee := ""
-			if i.Assignee != nil {
-				parts := strings.Split(i.Assignee.Name, " ")
-				for _, p := range parts {
-					assignee = fmt.Sprintf("%s%s", assignee, string(p[0]))
-				}
-				assignee = fmt.Sprintf(" — **%s**", assignee)
-			}
-			// Add a bold BUG prefix if it's labeled as one
-			prefix := ""
-			if contains(i.Labels, "Type::Bug") {
-				prefix = "**BUG**"
-			}
-			fmt.Printf("- [%d][%d] %s %s%s\n", i.IID, i.IID, prefix, i.Title, assignee)
-			// Use Markdown formatting to save the ID-to-URL for the bottom of the doc
-			links = append(links, fmt.Sprintf("[%d]: %s", i.IID, i.WebURL))
-		}
-	}
-
-	fmt.Printf("\n\n\n# Links\n\n")
-	for _, link := range links {
-		fmt.Println(link)
-	}
+	issue, _, err := git.Issues.UpdateIssue(projectID, issueID, opt)
+	return issue, err
 }

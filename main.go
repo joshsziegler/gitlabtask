@@ -80,7 +80,6 @@ func main() {
 		log.Fatalf("Error creating client: %v", err)
 	}
 
-	// ListAllOpenIssues(git, projectID)
 	webServer, err := NewServer(git, projectID)
 	if err != nil {
 		log.Fatalf("could not create web server: %w", err)

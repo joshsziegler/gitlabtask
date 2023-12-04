@@ -75,12 +75,18 @@ func writeHeader(w http.ResponseWriter) {
 				padding: 0 1rem;
 			}
 
-			.b { font-weight: bold; }
-			.i { font-style: italic; }
+			.weight-b { font-weight: bold; }
+			.weight-n { font-weight: normal; }
+			.style-i { font-style: italic; }
+			.style-n { font-style: normal; }
 			.text-right { text-align: right; }
 			.text-color-slate { color: #757575; }
+			.pl-1 { padding-left: 0.25rem; }
 			.pl-2 { padding-left: 0.5rem; }
-			.px-1 { padding-left: 1rem; padding-right: 1rem; }
+			.pl-4 { padding-left: 1rem; }
+			.px-1 { padding-left: 0.25rem; padding-right: 0.25rem; }
+			.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+			.px-4 { padding-left: 1rem; padding-right: 1rem; }
 			.ta-end {text-align: end; }
 			.inline { display: inline; }
 			.inline-block {display: inline-block; }
@@ -182,8 +188,6 @@ func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
 		"Customer Communication",
 		"Unsorted", // -- this is a category means it has no other labels in this list
 		// "Design",
-		"T::23-10",
-		"T::23-11",
 		"T::23-12",
 		"T::24-01",
 		"T::24-02",
@@ -201,7 +205,7 @@ func (s *Server) handleIssueList(w http.ResponseWriter, r *http.Request) {
 		"STIG:CAT-2",
 		"STIG:CAT-3",
 	}
-	s.printTemplateV2(w, labelOrder)
+	s.printTemplateV2(w, labelOrder, false)
 }
 
 // Show all tickets sorted by deadlines then Must, Should, and Want.
@@ -217,7 +221,7 @@ func (s *Server) handleIssueByMustShouldWant(w http.ResponseWriter, r *http.Requ
 		"STIG:CAT-2",
 		"STIG:CAT-3",
 	}
-	s.printTemplateV2(w, labelOrder)
+	s.printTemplateV2(w, labelOrder, true)
 }
 
 func (s *Server) printTemplateV1(w http.ResponseWriter, labelOrder []string) {
@@ -245,12 +249,12 @@ func (s *Server) printTemplateV1(w http.ResponseWriter, labelOrder []string) {
 				for _, p := range parts {
 					assignee = fmt.Sprintf("%s%s", assignee, string(p[0]))
 				}
-				assignee = fmt.Sprintf("— <span class=\"b\">%s<span>", assignee)
+				assignee = fmt.Sprintf("— <span class=\"weight-b\">%s<span>", assignee)
 			}
 			// Add a bold BUG prefix if it's labeled as one
 			prefix := ""
 			if contains(i.Labels, "Type::Bug") {
-				prefix = "<span class=\"b bug\">BUG</span>"
+				prefix = "<span class=\"weight-b bug\">BUG</span>"
 			}
 			fmt.Fprintf(w, "<li><a href=\"%s\">%d — %s %s %s</a></li>\n", i.WebURL, i.IID, prefix, i.Title, assignee)
 		}
@@ -260,7 +264,7 @@ func (s *Server) printTemplateV1(w http.ResponseWriter, labelOrder []string) {
 	fmt.Fprintln(w, "</body>\n</html>")
 }
 
-func (s *Server) printTemplateV2(w http.ResponseWriter, labelOrder []string) {
+func (s *Server) printTemplateV2(w http.ResponseWriter, labelOrder []string, showPlannedMonth bool) {
 	writeHeader(w)
 
 	issues, err := GetAllOpenIssues(s.git, s.projectID)
@@ -275,18 +279,27 @@ func (s *Server) printTemplateV2(w http.ResponseWriter, labelOrder []string) {
 	}
 
 	// Done sorting through issues. Print everything
-	numCol := 6
+	numCol := 5
+	if showPlannedMonth {
+		numCol = 6
+	}
 	fmt.Fprintln(w, "<article>")
 	fmt.Fprintln(w, "<table>")
 	for _, label := range labelOrder {
 		if label == "STOPHERE" {
 			break
 		}
+		numIssues := len(issueGroups[label])
 		// TODO(JZ): Add link to the list view, sorted by creation date (oldest to newest) with only this label
 		// https://gitlab.office.analyticsgateway.com/it/scale/analytics-hub/-/issues/?sort=created_asc&state=opened&label_name%5B%5D=customer%20communication&first_page_size=20
-		fmt.Fprintf(w, `<tr><td colspan="%d"><h2 class="underline">%s</h2></td></tr>`, numCol, label)
-		if len(issueGroups[label]) < 1 {
-			fmt.Fprintf(w, `<tr><td colspan="%d">None Found</td></tr>`, numCol)
+		fmt.Fprintf(w, `<tr>`)
+		fmt.Fprintf(w, `<td colspan="%d"><h2 class="underline">%s <span class="weight-n style-i pl-1">%d</span></h2></td>`, numCol, label, numIssues)
+		//fmt.Fprintf(w, `<td class="">Age</td>`)
+		//fmt.Fprintf(w, `<td class="">Due</td>`)
+		//fmt.Fprintf(w, `<td class="">Scheduled</td>`)
+		fmt.Fprint(w, `</tr>`)
+		if numIssues < 1 {
+			fmt.Fprintf(w, `<tr><td colspan="%d"></td></tr>`, numCol)
 		}
 
 		for _, i := range issueGroups[label] {
@@ -298,7 +311,7 @@ func (s *Server) printTemplateV2(w http.ResponseWriter, labelOrder []string) {
 				for _, p := range parts {
 					assignee = fmt.Sprintf("%s%s", assignee, string(p[0]))
 				}
-				assignee = fmt.Sprintf(`<span class="b">%s<span>`, assignee)
+				assignee = fmt.Sprintf(`<span class="weight-b">%s<span>`, assignee)
 			}
 			fmt.Fprintf(w, `<td class="">%s</td>`, assignee)
 
@@ -306,22 +319,24 @@ func (s *Server) printTemplateV2(w http.ResponseWriter, labelOrder []string) {
 			bug := contains(i.Labels, "Type::Bug")
 			titleClasses := ""
 			if bug {
-				titleClasses += "bug b" // bug makes it red, b makes it bold
+				titleClasses += "bug weight-b" // bug makes it red, b makes it bold
 			}
-			fmt.Fprintf(w, `<td class="px-1 ta-end"><span class="%s">%d</span></td>`, titleClasses, i.IID)
+			fmt.Fprintf(w, `<td class="px-4 ta-end"><span class="%s">%d</span></td>`, titleClasses, i.IID)
 			fmt.Fprintf(w, `<td class="truncate"><a href="%s">%s</a></td>`, i.WebURL, i.Title)
 
 			// Show the ticket's age in days
 			daysSinceCreation := int64(time.Now().Sub(*i.CreatedAt).Hours() / 24)
-			fmt.Fprintf(w, `<td class="i text-color-slate text-right">%d</td>`, daysSinceCreation)
+			fmt.Fprintf(w, `<td class="style-i text-color-slate text-right">%d</td>`, daysSinceCreation)
 
 			// Show the ticket's due date
-			fmt.Fprintf(w, `<td><span class="b pl-2">%s</span></td>`, i.DueDate)
+			fmt.Fprintf(w, `<td><span class="weight-b px-4">%s</span></td>`, i.DueDate)
 
 			// Show the ticket's current time label (e.g. T::23-11, T::24-01)
-			for _, label := range i.Labels {
-				if strings.HasPrefix(label, "T::") {
-					fmt.Fprintf(w, `<td>%s</td>`, label[3:])
+			if showPlannedMonth {
+				for _, label := range i.Labels {
+					if strings.HasPrefix(label, "T::") {
+						fmt.Fprintf(w, `<td class="text-color-slate">%s</td>`, label[3:])
+					}
 				}
 			}
 			fmt.Fprint(w, "</tr>")
